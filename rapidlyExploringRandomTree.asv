@@ -1,0 +1,168 @@
+classdef rapidlyExploringRandomTree < handle
+    properties
+        nodes
+        nodeCount
+        obstaclesData
+        obstacles
+        matlabGraph
+        limits
+        nodeGraphMaxSize
+    end
+    
+    methods
+        function obj = rapidlyExploringRandomTree(startNode,obstacles,obstaclesData,limits)
+            %assume start and end node not in obstacle
+            obj.nodeGraphMaxSize = 1000;
+            obj.nodes = zeros(obj.nodeGraphMaxSize,3);
+            obj.nodes(1,:) = startNode;
+            obj.matlabGraph = graph();
+            obj.matlabGraph = addnode(obj.matlabGraph,1);
+            obj.nodeCount = 1;
+            obj.obstacles = obstacles;
+            obj.obstaclesData = obstaclesData;
+            obj.limits = limits;
+        end
+        
+        function paths = runOptimization(obj,maxTime,destinations)
+            tic;
+            obj.clearTree();
+            timeElapsed = 0;
+            while(timeElapsed < maxTime)
+                obj.addNode();
+                timeElapsed = toc
+                iterations = obj.nodeCount
+            end
+%             endNodeIndex = obj.findNodeClosestToEnd(endPoint);
+%             [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,1,endNodeIndex);
+%             minimizedPath = obj.nodes(smallestPath,:);
+            numberOfDestinations = size(destinations,2);
+            numberOfPaths = (numberOfDestinations^2 + numberOfDestinations)/2 - numberOfDestinations;
+            paths = cell(numberOfPaths,1);
+            pathDistances = cell(numberOfPaths,1);
+            pathCount = 1;
+            for i=1:numberOfDestinations-1
+                for j=i+1:size(destinations,2)
+                    startNodeIndex = obj.findNodeClosestToEnd(destinations(i,:));
+                    endNodeIndex = obj.findNodeClosestToEnd(destinations(j,:));
+                    [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,startNodeIndex,endNodeIndex)
+                    paths(pathCount) = {smallestPath};
+                   
+                end
+            end
+            paths = obj.nodes(smallestPath,:);
+        end
+        
+        function addNode(obj)
+            connectionNotFound = true;
+            node = createNodeInBounds(obj);
+            while(connectionNotFound)
+                [closestNode , closestIndex, distance] = obj.findClosestNode(node);
+                if any(closestNode == inf)
+                    node = createNodeInBounds(obj);
+                else
+                    connectionNotFound = false;
+                    [secondClosestNode , secondClosestIndex, secondDistance] = obj.findSecondClosestNode(node,closestIndex);
+                end
+            end
+            %add node and edge
+            obj.nodeCount = obj.nodeCount + 1;
+            obj.nodes(obj.nodeCount,:) = node;
+            if obj.nodeCount >= obj.nodeGraphMaxSize
+                obj.enlargeNodeGraph();
+            end
+            obj.matlabGraph = addnode(obj.matlabGraph,obj.nodeCount);
+            obj.matlabGraph = addedge(obj.matlabGraph,obj.nodeCount,closestIndex,distance);
+            if ~any(secondClosestNode == inf)
+                obj.matlabGraph = addedge(obj.matlabGraph,obj.nodeCount,secondClosestIndex,secondDistance);
+            end
+        end
+        
+        function xyzNode = createNodeInBounds(obj)
+            nodeInObstacle = true;
+            minLimit = obj.limits(1);
+            maxLimit = obj.limits(2);
+            width = abs(maxLimit - minLimit);
+            center = (maxLimit + minLimit)/2;
+            xyzNode = center + (rand(1,3)-.5)*width;
+            obstacleCenters = obj.obstaclesData(:,1:3);
+            dimensionsObstacles = obj.obstaclesData(:,4:6);
+            while nodeInObstacle
+                xyzDistancesToCenter = abs(xyzNode - obstacleCenters);
+                if ~any(all(xyzDistancesToCenter<dimensionsObstacles,2))
+                    nodeInObstacle = false;
+                else
+                    xyzNode = center + (rand(1,3)-.5)*width;
+                end
+            end
+        end
+        
+        function [closest , closestIndex, distance] = findClosestNode(obj, node)
+            closest = [inf,inf,inf];
+            closestIndex = 0;
+            distance = inf;
+            xyzDistancesToNodes = abs(node - obj.nodes(1:obj.nodeCount,:));
+            distanceToNodes = vecnorm(xyzDistancesToNodes,2,2);
+            %check size of above matrix
+            for i = 1:obj.nodeCount
+                [minValue , minIndex] = min(distanceToNodes);
+                nextNode = obj.nodes(minIndex,:);
+                lineSegment = [nextNode;node];
+                if checkIfSegmentIntersectsObstacleList(lineSegment,obj.obstacles);
+                    distanceToNodes(i) = inf;
+                else
+                    closest = nextNode;
+                    closestIndex = minIndex;
+                    distance = minValue;
+                    return
+                end
+            end
+        end
+        
+        function [secondClosest , secondClosestIndex, distance] = findSecondClosestNode(obj, node, closestIndex)
+            secondClosest = [inf,inf,inf];
+            secondClosestIndex = 0;
+            distance = inf;
+            xyzDistancesToNodes = abs(node - obj.nodes(1:obj.nodeCount,:));
+            distanceToNodes = vecnorm(xyzDistancesToNodes,2,2);
+            distanceToNodes(closestIndex) = inf;
+            %check size of above matrix
+            for i = 1:obj.nodeCount
+                [minValue , minIndex] = min(distanceToNodes);
+                nextNode = obj.nodes(minIndex,:);
+                lineSegment = [nextNode;node];
+                if checkIfSegmentIntersectsObstacleList(lineSegment,obj.obstacles);
+                    distanceToNodes(i) = inf;
+                else
+                    secondClosest = nextNode;
+                    secondClosestIndex = minIndex;
+                    distance = minValue;
+                    return
+                end
+            end
+        end
+        
+        function enlargeNodeGraph(obj)
+            obj.nodes = [obj.nodes ; zeros(obj.nodeGraphMaxSize,3)];
+            obj.nodeGraphMaxSize = obj.nodeGraphMaxSize*2;
+        end
+        
+        function nodeIndex = findNodeClosestToEnd(obj, endPoint)
+            xyzDistancesToNodes = abs(endPoint - obj.nodes(1:obj.nodeCount,:));
+            distanceToNodes = vecnorm(xyzDistancesToNodes,2,2);
+            [minValue, nodeIndex] = min(distanceToNodes);
+        end
+        
+        function clearTree(obj)
+            obj.nodeGraphMaxSize = 1000;
+            startNode = obj.nodes(1,:);
+            obj.nodes = zeros(obj.nodeGraphMaxSize,3);
+            obj.nodes(1,:) = startNode;
+            obj.matlabGraph = graph();
+            obj.matlabGraph = addnode(obj.matlabGraph,1);
+            obj.nodeCount = 1;
+        end
+        
+                
+    end
+end
+
