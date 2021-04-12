@@ -51,15 +51,10 @@ function [obstacleList , obstacleDataList] = generateObstacleMap()
      obstacleList(:,:,:,9) = obstacle9;
      obstacleDataList(9,:) = obstacleData9;
          
-     obstacle10 = makeRectangularPrism(2,2,4,[5,6,2]);
-     obstacleData10 = [5,6,2,2,2,4];
+     obstacle10 = makeRectangularPrism(2,5,1,[6.5,6,0.5]);
+     obstacleData10 = [6.5,6,0.5,5,2,1];
      obstacleList(:,:,:,10) = obstacle10;
      obstacleDataList(10,:) = obstacleData10;
-         
-     obstacle11 = makeRectangularPrism(2,2,1,[8,6,0.5]);
-     obstacleData11 = [8,6,0.5,2,2,1];
-     obstacleList(:,:,:,11) = obstacle11;
-     obstacleDataList(11,:) = obstacleData11;
          
      obstacle12 = makeRectangularPrism(1,1,3,[1.5,8.5,1.5]);
      obstacleData12 = [1.5,8.5,1.5,1,1,3];
