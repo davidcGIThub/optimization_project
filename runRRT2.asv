@@ -7,14 +7,17 @@ clf;
 % maxIterations = 2000;
 limits = [0,10];
 destinations = generateDestinations();
+startPoint = destinations(1,:) + .1;
+endPoint = destinations(3,:);
 [obstacles, obstaclesData] = generateObstacleMap();
-maxTime = 1800;
+maxTime = 3600*3;
 
 plotObstacles(obstacles);
 hold on;
+destinations = generateDestinations();
 scatter3(destinations(:,1), destinations(:,2) , destinations(:,3),'filled' , 'r');
 
-rrt = rapidlyExploringRandomTree(obstacles,obstaclesData,limits);
+rrt = rapidlyExploringRandomTree(startPoint,obstacles,obstaclesData,limits);
 [paths, pathDistances,rrtTime,pathOptTime] = rrt.runOptimization(maxTime,destinations);
 for i = 1:size(paths,1)
     path = paths{i};

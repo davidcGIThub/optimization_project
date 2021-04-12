@@ -11,11 +11,10 @@ classdef rapidlyExploringRandomTree < handle
     end
     
     methods
-        function obj = rapidlyExploringRandomTree(startNode,obstacles,obstaclesData,limits)
+        function obj = rapidlyExploringRandomTree(obstacles,obstaclesData,limits)
             %assume start and end node not in obstacle
             obj.nodeGraphMaxSize = 1000;
             obj.nodes = zeros(obj.nodeGraphMaxSize,3);
-            obj.nodes(1,:) = startNode;
             obj.matlabGraph = graph();
             obj.matlabGraph = addnode(obj.matlabGraph,1);
             obj.nodeCount = 1;
@@ -28,6 +27,7 @@ classdef rapidlyExploringRandomTree < handle
             tic;
             obj.clearTree();
             timeElapsed = 0;
+            obj.createGroundLevelConnections();
             while(timeElapsed < maxTime)
                 obj.addNode();
                 timeElapsed = toc
@@ -160,9 +160,7 @@ classdef rapidlyExploringRandomTree < handle
         
         function clearTree(obj)
             obj.nodeGraphMaxSize = 1000;
-            startNode = obj.nodes(1,:);
             obj.nodes = zeros(obj.nodeGraphMaxSize,3);
-            obj.nodes(1,:) = startNode;
             obj.matlabGraph = graph();
             obj.matlabGraph = addnode(obj.matlabGraph,1);
             obj.nodeCount = 1;
@@ -201,7 +199,48 @@ classdef rapidlyExploringRandomTree < handle
             end
         end
         
-                
+        function createGroundLevelConnections(obj)
+            width = round(abs(obj.limits(2) - obj.limits(1)))
+            for i = 0:width-1
+                for j = 0:width-1
+                    %add valid node
+                    node = [i+.5,j+.5,0.1];
+                    if ~obj.checkIfGroundLevelNodeIsInBuilding(node)
+                        node
+                        obj.nodeCount = obj.nodeCount + 1;
+                        iterations = obj.nodeCount
+                        time_elapsed = toc
+                        obj.nodes(obj.nodeCount,:) = node;
+                        if obj.nodeCount >= obj.nodeGraphMaxSize
+                            obj.enlargeNodeGraph();
+                        end
+                        obj.matlabGraph = addnode(obj.matlabGraph,obj.nodeCount);
+                        %add connections
+                        xyzDistancesToNodes = abs(node - obj.nodes(1:obj.nodeCount-1,:));
+                        distanceToNodes = vecnorm(xyzDistancesToNodes,2,2);
+                        for k=1:obj.nodeCount-1
+                            if distanceToNodes(k) <= 1
+                                k
+                                d = distanceToNodes(k)
+                                obj.matlabGraph = addedge(obj.matlabGraph,obj.nodeCount,k,distanceToNodes(k));
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        function isInBuilding = checkIfGroundLevelNodeIsInBuilding(obj,node)
+            isInBuilding = false;
+            obstacleCenters = obj.obstaclesData(:,1:2);
+            dimensionsObstacles = obj.obstaclesData(:,4:5)/2;
+            xyDistancesToCenter = abs(node(1,1:2) - obstacleCenters);
+            if any(all(xyDistancesToCenter<dimensionsObstacles,2))
+                    isInBuilding = true
+            end
+        end
+
     end
+            
 end
 

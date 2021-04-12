@@ -24,10 +24,11 @@ classdef rapidlyExploringRandomTree < handle
             obj.limits = limits;
         end
         
-        function [optimizedPaths, pathDistances] = runOptimization(obj,maxTime,destinations)
+        function [optimizedPaths, pathDistances,rrtTime,pathOptTime] = runOptimization(obj,maxTime,destinations)
             tic;
             obj.clearTree();
             timeElapsed = 0;
+            obj.createGroundLevelConnections(obj)
             while(timeElapsed < maxTime)
                 obj.addNode();
                 timeElapsed = toc
@@ -48,10 +49,12 @@ classdef rapidlyExploringRandomTree < handle
                     [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,startNodeIndex,endNodeIndex);
                     obj.paths(pathCount) = {obj.nodes(smallestPath,:)};
                     pathDistances(pathCount) = {minimizedDistance};
-                    pathCount = pathCount + 1
+                    pathCount = pathCount + 1;
                 end
             end
-            optimizedPaths = obj.optimizePaths();
+            rrtTime = toc;
+            [optimizedPaths, pathDistances] = obj.optimizePaths();
+            pathOptTime = toc;
         end
         
         function addNode(obj)
@@ -167,9 +170,10 @@ classdef rapidlyExploringRandomTree < handle
             obj.paths = {};
         end
         
-        function optimizedPaths = optimizePaths(obj)
+        function [optimizedPaths , pathDistances] = optimizePaths(obj)
             numberOfPaths = size(obj.paths,1);
             optimizedPaths = cell(numberOfPaths,1);
+            pathDistances = cell(numberOfPaths,1);
             for i=1:numberOfPaths
                 path_being_optimized = i
                 path = obj.paths{i};
@@ -193,12 +197,48 @@ classdef rapidlyExploringRandomTree < handle
                     currentNode = path(j,:);
                     distance = distance + norm(nextNode - currentNode);
                 end
-                
+                pathDistances(i) = {distance};
                 optimizedPaths(i) = {path};
             end
         end
         
-                
+        function createGroundLevelConnections(obj)
+            width = round(abs(obj.limits(2) - obj.limits(1)));
+            for i = 0:width-1
+                for j = 0:width-1
+                    %add valid node
+                    node = [i+.5,j+.5,0.1];
+                    if ~checkIfGroundLevelNodeIsInBuilding(node)
+                        obj.nodeCount = obj.nodeCount + 1;
+                        obj.nodes(obj.nodeCount,:) = node;
+                        if obj.nodeCount >= obj.nodeGraphMaxSize
+                            obj.enlargeNodeGraph();
+                        end
+                        obj.matlabGraph = addnode(obj.matlabGraph,obj.nodeCount);
+                        %add connections
+                        xyzDistancesToNodes = abs(node - obj.nodes(1:obj.nodeCount-1,:));
+                        distanceToNodes = vecnorm(xyzDistancesToNodes,2,2);
+                        for k=1:obj.nodeCount-1
+                            if distanceToNodes(k) <= 1
+                                obj.matlabGraph = addedge(obj.matlabGraph,obj.nodeCount,k,distanceToNodes(k));
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        function isInBuilding = checkIfGroundLevelNodeIsInBuilding(obj,node)
+            isInBuilding = false;
+            obstacleCenters = obj.obstaclesData(:,1:3);
+            dimensionsObstacles = obj.obstaclesData(:,4:6);
+            xyzDistancesToCenter = abs(node - obstacleCenters);
+            if any(all(xyzDistancesToCenter<dimensionsObstacles,2))
+                    isInBuilding = true;
+            end
+        end
+
     end
+            
 end
 
