@@ -7,6 +7,7 @@ classdef rapidlyExploringRandomTree < handle
         matlabGraph
         limits
         nodeGraphMaxSize
+        paths
     end
     
     methods
@@ -23,7 +24,7 @@ classdef rapidlyExploringRandomTree < handle
             obj.limits = limits;
         end
         
-        function [paths, pathDistances] = runOptimization(obj,maxTime,destinations)
+        function [optimizedPaths, pathDistances,rrtTime,pathOptTime] = runOptimization(obj,maxTime,destinations)
             tic;
             obj.clearTree();
             timeElapsed = 0;
@@ -35,21 +36,24 @@ classdef rapidlyExploringRandomTree < handle
 %             endNodeIndex = obj.findNodeClosestToEnd(endPoint);
 %             [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,1,endNodeIndex);
 %             minimizedPath = obj.nodes(smallestPath,:);
-            numberOfDestinations = size(destinations,1)
-            numberOfPaths = (numberOfDestinations^2 + numberOfDestinations)/2 - numberOfDestinations
-            paths = cell(numberOfPaths,1)
-            pathDistances = cell(numberOfPaths,1)
+            numberOfDestinations = size(destinations,1);
+            numberOfPaths = (numberOfDestinations^2 + numberOfDestinations)/2 - numberOfDestinations;
+            obj.paths = cell(numberOfPaths,1);
+            pathDistances = cell(numberOfPaths,1);
             pathCount = 1;
             for i=1:numberOfDestinations-1
                 for j=i+1:numberOfDestinations
                     startNodeIndex = obj.findNodeClosestToEnd(destinations(i,:));
                     endNodeIndex = obj.findNodeClosestToEnd(destinations(j,:));
-                    [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,startNodeIndex,endNodeIndex)
-                    paths(pathCount) = {obj.nodes(smallestPath,:)};
+                    [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,startNodeIndex,endNodeIndex);
+                    obj.paths(pathCount) = {obj.nodes(smallestPath,:)};
                     pathDistances(pathCount) = {minimizedDistance};
-                    pathCount = pathCount + 1
+                    pathCount = pathCount + 1;
                 end
             end
+            rrtTime = toc;
+            [optimizedPaths, pathDistances] = obj.optimizePaths();
+            pathOptTime = toc;
         end
         
         function addNode(obj)
@@ -162,6 +166,39 @@ classdef rapidlyExploringRandomTree < handle
             obj.matlabGraph = graph();
             obj.matlabGraph = addnode(obj.matlabGraph,1);
             obj.nodeCount = 1;
+            obj.paths = {};
+        end
+        
+        function [optimizedPaths , pathDistances] = optimizePaths(obj)
+            numberOfPaths = size(obj.paths,1);
+            optimizedPaths = cell(numberOfPaths,1);
+            pathDistances = cell(numberOfPaths,1);
+            for i=1:numberOfPaths
+                path_being_optimized = i
+                path = obj.paths{i};
+                j = 1;
+                distance = 0;
+                while(j <= size(path,1)-2)
+                    node1 = path(j,:);
+                    node2 = path(j+2,:);
+                    lineSegment = [node1;node2];
+                    if ~checkIfSegmentIntersectsObstacleList(lineSegment,obj.obstacles)
+                        path(j+1,:) = [];
+                    else
+                        j = j+1;
+                        previousNode = path(j-1,:);
+                        currentNode = path(j,:);
+                        distance = distance + norm(previousNode - currentNode);
+                    end
+                end
+                if j < size(path,1)
+                    nextNode = path(j+1,:);
+                    currentNode = path(j,:);
+                    distance = distance + norm(nextNode - currentNode);
+                end
+                pathDistances(i) = {distance};
+                optimizedPaths(i) = {path};
+            end
         end
         
                 
