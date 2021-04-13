@@ -29,13 +29,12 @@ classdef rapidlyExploringRandomTree < handle
             timeElapsed = 0;
             obj.createGroundLevelConnections();
             while(timeElapsed < maxTime)
-                obj.addNode();
                 timeElapsed = toc
                 iterations = obj.nodeCount
+                obj.addNode();
             end
-%             endNodeIndex = obj.findNodeClosestToEnd(endPoint);
-%             [smallestPath , minimizedDistance] = shortestpath(obj.matlabGraph,1,endNodeIndex);
-%             minimizedPath = obj.nodes(smallestPath,:);
+            timeElapsed = toc
+            iterations = obj.nodeCount
             numberOfDestinations = size(destinations,1);
             numberOfPaths = (numberOfDestinations^2 + numberOfDestinations)/2 - numberOfDestinations;
             obj.paths = cell(numberOfPaths,1);
@@ -52,8 +51,9 @@ classdef rapidlyExploringRandomTree < handle
                 end
             end
             rrtTime = toc;
-            [optimizedPaths, pathDistances] = obj.optimizePaths();
-            pathOptTime = toc;
+%             optimizedPaths = obj.paths;
+            [optimizedPaths , pathDistances] = obj.optimizePaths();
+            pathOptTime = toc
         end
         
         function addNode(obj)
@@ -88,6 +88,16 @@ classdef rapidlyExploringRandomTree < handle
             width = abs(maxLimit - minLimit);
             center = (maxLimit + minLimit)/2;
             xyzNode = center + (rand(1,3)-.5)*width;
+            xyObstacleCenters = obj.obstaclesData(:,1:2);
+%             [closestObstacleDistance , closestObstacleIndex] = min(vecnorm(xyzNode(1,1:2) - xyObstacleCenters, 2 ,2));
+%             closestObstacle = obj.obstaclesData(closestObstacleIndex,:);
+%             if xyzNode(1,1) - closestObstacle(1,1) < closestObstacle(1,4)/2 && xyzNode(1,2) - closestObstacle(1,2) < closestObstacle(1,5)/2
+%                 obstacleHeight = closestObstacle(1,6);
+%                 xyzNode(3) = (obj.limits(1,2)/2 - obstacleHeight)*rand(1,1) + obstacleHeight;
+%             else
+%                 obstacleHeight = 0.1;
+%                 xyzNode(3) = (obj.limits(1,2)/2 - obstacleHeight)*rand(1,1) + obstacleHeight;
+%             end 
             xyzNode(3) = xyzNode(3)/2 + .1;
             obstacleCenters = obj.obstaclesData(:,1:3);
             dimensionsObstacles = obj.obstaclesData(:,4:6);
@@ -200,16 +210,13 @@ classdef rapidlyExploringRandomTree < handle
         end
         
         function createGroundLevelConnections(obj)
-            width = round(abs(obj.limits(2) - obj.limits(1)))
+            width = round(abs(obj.limits(2) - obj.limits(1)));
             for i = 0:width-1
                 for j = 0:width-1
                     %add valid node
                     node = [i+.5,j+.5,0.1];
                     if ~obj.checkIfGroundLevelNodeIsInBuilding(node)
-                        node
                         obj.nodeCount = obj.nodeCount + 1;
-                        iterations = obj.nodeCount
-                        time_elapsed = toc
                         obj.nodes(obj.nodeCount,:) = node;
                         if obj.nodeCount >= obj.nodeGraphMaxSize
                             obj.enlargeNodeGraph();
@@ -220,8 +227,6 @@ classdef rapidlyExploringRandomTree < handle
                         distanceToNodes = vecnorm(xyzDistancesToNodes,2,2);
                         for k=1:obj.nodeCount-1
                             if distanceToNodes(k) <= 1
-                                k
-                                d = distanceToNodes(k)
                                 obj.matlabGraph = addedge(obj.matlabGraph,obj.nodeCount,k,distanceToNodes(k));
                             end
                         end
@@ -236,7 +241,7 @@ classdef rapidlyExploringRandomTree < handle
             dimensionsObstacles = obj.obstaclesData(:,4:5)/2;
             xyDistancesToCenter = abs(node(1,1:2) - obstacleCenters);
             if any(all(xyDistancesToCenter<dimensionsObstacles,2))
-                    isInBuilding = true
+                    isInBuilding = true;
             end
         end
 
